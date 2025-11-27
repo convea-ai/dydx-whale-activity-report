@@ -449,6 +449,37 @@
         .copy-btn.copied .copy-tooltip {
             opacity: 1;
         }
+
+        /* Component tooltip */
+        .component-name {
+            position: relative;
+            cursor: help;
+            border-bottom: 1px dotted #666;
+        }
+
+        .component-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            background: #1a1a1a;
+            border: 1px solid #00d9a3;
+            color: #e0e0e0;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            white-space: normal;
+            width: 300px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            margin-bottom: 8px;
+            z-index: 1000;
+            line-height: 1.4;
+        }
+
+        .component-name:hover .component-tooltip {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -929,31 +960,51 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td>Pure Distribution</td>
+                        <td>
+                            <span class="component-name">Pure Distribution
+                                <span class="component-tooltip">21 whale addresses that only send DYDX to CEX, never receive back. These are likely early recipients, VCs, or team members liquidating positions through one-way exits.</span>
+                            </span>
+                        </td>
                         <td class="right">174.7M</td>
                         <td class="right">23.2%</td>
                         <td>⚠️ Declining over time</td>
                     </tr>
                     <tr>
-                        <td>Tactical Sellers</td>
+                        <td>
+                            <span class="component-name">Tactical Sellers
+                                <span class="component-tooltip">11 addresses that are net sellers but still CEX-active (receive some funds back). They show strategic behavior like selling at resistance and buying at support, not panic exits.</span>
+                            </span>
+                        </td>
                         <td class="right">26.0M</td>
                         <td class="right">3.5%</td>
                         <td>✅ Can incentivize staking</td>
                     </tr>
                     <tr>
-                        <td>Accumulator Offset</td>
+                        <td>
+                            <span class="component-name">Accumulator Offset
+                                <span class="component-tooltip">17 whale addresses that are net buyers, receiving MORE from CEX than they send. They're accumulating +17.9M DYDX, offsetting selling pressure from other whales.</span>
+                            </span>
+                        </td>
                         <td class="right negative">-17.9M</td>
                         <td class="right negative">-2.4%</td>
                         <td>✅ Positive signal</td>
                     </tr>
                     <tr>
-                        <td>Market Makers</td>
+                        <td>
+                            <span class="component-name">Market Makers
+                                <span class="component-tooltip">11 addresses with balanced bidirectional flow (equal inflows and outflows). They provide liquidity and show no net directional bias, enhancing market efficiency.</span>
+                            </span>
+                        </td>
                         <td class="right">0M</td>
                         <td class="right">0%</td>
                         <td>✅ Beneficial (balanced)</td>
                     </tr>
                     <tr style="border-top: 2px solid #444;">
-                        <td><strong>True Net Pressure</strong></td>
+                        <td>
+                            <span class="component-name"><strong>True Net Pressure</strong>
+                                <span class="component-tooltip">The actual net selling pressure after accounting for accumulators and market makers. This is 75.7% less than the gross outflow number (753M) that's often cited.</span>
+                            </span>
+                        </td>
                         <td class="right"><strong>182.8M</strong></td>
                         <td class="right"><strong>24.3%</strong></td>
                         <td><strong>75.7% less than gross</strong></td>
