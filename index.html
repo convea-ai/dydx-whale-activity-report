@@ -521,6 +521,28 @@
             </div>
         </div>
 
+        <!-- Price Chart with Events -->
+        <div class="section">
+            <h2>DYDX Price Activity & Whale Events (30 Days)</h2>
+            <p>Interactive price chart showing key whale trading events and large transfers overlaid on DYDX price action.</p>
+
+            <div style="background: #141414; border: 1px solid #222; border-radius: 8px; padding: 24px; margin: 32px 0;">
+                <div style="margin-bottom: 16px; display: flex; gap: 16px; flex-wrap: wrap;">
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer;">
+                        <input type="checkbox" id="showBinanceTrades" checked style="cursor: pointer;">
+                        <span style="width: 12px; height: 12px; background: #ff4d4d; border-radius: 50%; display: inline-block;"></span>
+                        Large Binance Trades (11,251)
+                    </label>
+                </div>
+
+                <canvas id="priceChart" style="max-height: 400px;"></canvas>
+
+                <div id="eventDetails" style="margin-top: 24px; padding: 16px; background: #1a1a1a; border-radius: 4px; min-height: 60px; font-size: 0.9rem; color: #b0b0b0;">
+                    <div style="color: #888; font-size: 0.85rem;">Hover over the chart or click on event markers to see details</div>
+                </div>
+            </div>
+        </div>
+
         <!-- The Big Discovery -->
         <div class="section">
             <h2>The Paradigm Shift: What We Actually Found</h2>
@@ -1064,6 +1086,11 @@
         </div>
     </div>
 
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+
     <script>
     function copyAddress(address, button) {
         navigator.clipboard.writeText(address).then(function() {
@@ -1075,6 +1102,203 @@
             console.error('Failed to copy:', err);
         });
     }
+
+    // Load and render price chart with events
+    async function loadPriceChart() {
+        try {
+            const response = await fetch('chart_data.json');
+            const data = await response.json();
+
+            const ctx = document.getElementById('priceChart').getContext('2d');
+
+            // Prepare price data
+            const priceData = data.priceData.map(d => ({
+                x: d.timestamp,
+                y: d.price
+            }));
+
+            // Prepare event data for annotations
+            const eventAnnotations = {};
+
+            data.events.binanceTrades.forEach((trade, idx) => {
+                const key = `trade_${idx}`;
+                eventAnnotations[key] = {
+                    type: 'point',
+                    xValue: trade.timestamp,
+                    yValue: trade.price,
+                    backgroundColor: trade.side === 'BUY' ? '#00d9a3' : '#ff4d4d',
+                    borderColor: trade.side === 'BUY' ? '#00d9a3' : '#ff4d4d',
+                    borderWidth: 2,
+                    radius: 4,
+                    display: true,
+                    enter(ctx) {
+                        showEventDetails(trade);
+                    }
+                };
+            });
+
+            const chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'DYDX Price (USD)',
+                        data: priceData,
+                        borderColor: '#00d9a3',
+                        backgroundColor: 'rgba(0, 217, 163, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#e0e0e0',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#1a1a1a',
+                            titleColor: '#fff',
+                            bodyColor: '#e0e0e0',
+                            borderColor: '#00d9a3',
+                            borderWidth: 1,
+                            callbacks: {
+                                title: function(context) {
+                                    const date = new Date(context[0].parsed.x);
+                                    return date.toLocaleString();
+                                },
+                                label: function(context) {
+                                    return `Price: $${context.parsed.y.toFixed(4)}`;
+                                }
+                            }
+                        },
+                        annotation: {
+                            annotations: eventAnnotations
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'MMM d'
+                                }
+                            },
+                            grid: {
+                                color: '#222'
+                            },
+                            ticks: {
+                                color: '#888'
+                            }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            grid: {
+                                color: '#222'
+                            },
+                            ticks: {
+                                color: '#888',
+                                callback: function(value) {
+                                    return '$' + value.toFixed(3);
+                                }
+                            }
+                        }
+                    },
+                    onHover: (event, activeElements) => {
+                        if (activeElements.length > 0) {
+                            const dataIndex = activeElements[0].index;
+                            const timestamp = priceData[dataIndex].x;
+
+                            // Find nearby events
+                            const nearbyTrades = data.events.binanceTrades.filter(trade => {
+                                const timeDiff = Math.abs(trade.timestamp - timestamp);
+                                return timeDiff < 3600000; // Within 1 hour
+                            });
+
+                            if (nearbyTrades.length > 0) {
+                                const trade = nearbyTrades[0];
+                                showEventDetails(trade);
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Toggle event visibility
+            document.getElementById('showBinanceTrades').addEventListener('change', function(e) {
+                Object.keys(eventAnnotations).forEach(key => {
+                    if (key.startsWith('trade_')) {
+                        eventAnnotations[key].display = e.target.checked;
+                    }
+                });
+                chart.update();
+            });
+
+            window.priceChart = chart;
+            window.chartData = data;
+
+        } catch (error) {
+            console.error('Error loading chart:', error);
+            document.getElementById('priceChart').parentElement.innerHTML =
+                '<p style="color: #ff4d4d; text-align: center; padding: 40px;">Error loading chart data. Please ensure chart_data.json is available.</p>';
+        }
+    }
+
+    function showEventDetails(event) {
+        const detailsDiv = document.getElementById('eventDetails');
+
+        let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">';
+
+        if (event.type === 'BINANCE_TRADE') {
+            const sideColor = event.side === 'BUY' ? '#00d9a3' : '#ff4d4d';
+            html += `
+                <div>
+                    <div style="color: #888; font-size: 0.8rem;">Event Type</div>
+                    <div style="color: #fff; font-weight: 600;">Large Binance Trade</div>
+                </div>
+                <div>
+                    <div style="color: #888; font-size: 0.8rem;">Date & Time</div>
+                    <div style="color: #fff;">${event.date}</div>
+                </div>
+                <div>
+                    <div style="color: #888; font-size: 0.8rem;">Side</div>
+                    <div style="color: ${sideColor}; font-weight: 600;">${event.side}</div>
+                </div>
+                <div>
+                    <div style="color: #888; font-size: 0.8rem;">Amount</div>
+                    <div style="color: #fff; font-weight: 600;">${event.amount.toLocaleString()} DYDX</div>
+                </div>
+                <div>
+                    <div style="color: #888; font-size: 0.8rem;">Price</div>
+                    <div style="color: #fff;">$${event.price.toFixed(4)}</div>
+                </div>
+                <div>
+                    <div style="color: #888; font-size: 0.8rem;">Value</div>
+                    <div style="color: #fff;">$${(event.amount * event.price).toLocaleString()}</div>
+                </div>
+            `;
+        }
+
+        html += '</div>';
+        detailsDiv.innerHTML = html;
+    }
+
+    // Load chart when page loads
+    document.addEventListener('DOMContentLoaded', loadPriceChart);
     </script>
 </body>
 </html>
